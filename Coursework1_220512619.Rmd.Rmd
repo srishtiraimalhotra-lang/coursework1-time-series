@@ -1,0 +1,89 @@
+---
+title: "MTH6139 Time Series" 
+subtitle: "Coursework 1 -- Time Series Forecasting of UK Gilt Yields" 
+author: "Srishti Malhotra" 
+date: "Spring term 2025" 
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: spacelab 
+    highlight: tango
+---
+    
+```{r, echo=FALSE}
+# This code will display the QMUL logo at the top right of the page
+# Do not change this code
+htmltools::img(src = knitr::image_uri("images/QMlogo.png"),
+               alt = 'logo',
+               style = 'position:absolute; top:0; right:0; padding:10px; width:20%;')
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+## 1. Data Collection and Preparation
+This dataset contains long-term UK government bond yields over the past decade, sourced from the FRED database and accessed using R. These yields are indicators of economic conditions, specifically around inflation and interest rates, and are used in actuarial applications such as pension valuation.
+
+The data is structured into a data frame with two columns: ds, representing the date, and y, representing the corresponding yield value. Missing values are removed to ensure a clean input for the forecasting model.
+
+```{r}
+library(quantmod)
+library(prophet)
+getSymbols("IRLTLT01GBM156N",src="FRED")
+giltdf=data.frame(ds=as.Date(index(IRLTLT01GBM156N)),y=as.numeric(IRLTLT01GBM156N))
+giltdf=na.omit(giltdf)
+giltdf=subset(giltdf,ds >= as.Date("2016-01-01"))
+```
+
+## 2. Prophet Model
+
+The Prophet model is used to model the time series. Prophet is designed to handle time series data with trends and seasonality, and it detects patterns.
+
+The model is fitted using the prepared dataset.
+
+```{r}
+giltmodel=prophet(giltdf)
+```
+
+## 3. Forecasting
+
+The model is used to generate forecasts for the next 12 months. This allows us to estimate how gilt yields may change in the future based on previous years.
+
+```{r}
+futuredates=make_future_dataframe(giltmodel,periods=12,freq="month")
+giltforecast=predict(giltmodel,futuredates)
+```
+
+## 4. Forecast Visualisation
+
+The plot shows the overall trend in gilt yields over time. There is a sharp increase in yield rate between 2020 and 2021 and the yield rates continue to follow that upward trend. This change could be as a result of the pandemic
+
+The forecast suggests that yields will continue following this trend in the future too.
+
+```{r}
+plot(giltmodel, giltforecast)
+```
+
+## 5. Model Components
+
+The decomposition plot shows both the overall trend and yearly patterns in yields. The trend shows a decrease in yields between 2016 and 2020, followed by an increase from 2021 onwards. This could reflect changes in economic conditions post pandemic.
+
+The yearly component shows some seasonal variation throughout the year. However, these fluctuations are relatively small compared to the overall trend, suggesting that long-term economic factors have a much stronger impact on yields than seasonal effects.
+
+From an actuarial perspective, the increase in yields is important because it would reduce the present value of pension liabilities, which could mean pension schemes are better funded
+
+```{r}
+prophet_plot_components(giltmodel,giltforecast)
+```
+
+## 6. Key Event: Yield Spike
+
+The sharp increase in yields around 2022 is clearly visible. This corresponds to the UK gilt crisis, where yields rose rapidly due to market instability following an unfunded tax cuts announcement (mini-budget announcement). This led to a loss of investor confidence in the market, causing a sell-off in government bonds and, as a result, a sharp spike in yields. This was eventually stabilised through the intervention of the Bank of England
+
+```{r}
+plot(giltdf$ds,giltdf$y,type="l",main="UK Gilt Yields Over Time",xlab="Date",ylab="Yield")
+abline(v = as.Date("2022-09-01"), col = "red", lty = 2)
+```
